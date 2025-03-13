@@ -1,0 +1,13 @@
+name = "hNODE"
+uuid = "11b5ffd2-88c6-4534-bd40-5efb1a12ebde"
+authors = ["Eugene"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1.6.7"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
