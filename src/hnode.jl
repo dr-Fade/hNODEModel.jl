@@ -91,12 +91,7 @@ function integrate(
 end
 
 # fourth stage - use the decoder to convert latent trajectories to time series space
-function decode(
-    m::hNODE,
-    trajectories::AbstractArray,
-    ps,
-    st::NamedTuple
-)
+function decode(m::hNODE, trajectories::AbstractArray, ps, st::NamedTuple)
     decoded_trajectories = (
         begin
             y = m.decoder(x, ps.decoder, st.decoder)[1]
@@ -108,12 +103,7 @@ function decode(
     return reduce(vcat, decoded_trajectories), st
 end
 
-function decode(
-    m::hNODE,
-    trajectories::CuArray,
-    ps,
-    st::NamedTuple
-)
+function decode(m::hNODE, trajectories::CuArray, ps, st::NamedTuple)
     decoded_trajectories = (
         begin
             y = m.decoder(CuMatrix(x), ps.decoder, st.decoder)[1]
