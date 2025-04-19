@@ -35,7 +35,7 @@ function (m::hNODE)(xs::AbstractArray, ps, st::NamedTuple)
     return m((xs, u0s), ps, st)
 end
 
-function (m::hNODE)((xs, u0s)::Tuple{<:AbstractArray, <:AbstractMatrix}, ps, st::NamedTuple)
+function (m::hNODE)((xs, u0s)::Tuple{<:AbstractArray, <:AbstractArray}, ps, st::NamedTuple)
     controls, st = control(m, xs, ps, st)
     (trajectories, un), st = integrate(m, (u0s, controls), ps, st)
     decoded, st = decode(m, trajectories, ps, st)
@@ -63,7 +63,7 @@ cat3(x...) = cat(x...; dims=3)
 # third stage - use the feature vector to get the control for ode and integrate it using the embedded sound as u0
 function integrate(
     m::hNODE,
-    (u0s, controls)::Tuple{<:AbstractMatrix, <:AbstractMatrix},
+    (u0s, controls)::Tuple{<:AbstractArray, <:AbstractArray},
     ps,
     st::NamedTuple
 )
