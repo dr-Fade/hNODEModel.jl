@@ -1,7 +1,7 @@
 name = "hNODEModel"
 uuid = "11b5ffd2-88c6-4534-bd40-5efb1a12ebde"
-authors = ["Eugene"]
-version = "1.0.0-DEV"
+authors = ["Eugene Koshel"]
+version = "0.0.1-DEV"
 
 [deps]
 ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
