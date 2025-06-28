@@ -2,6 +2,6 @@ module hNODEModel
 
 include("hnode.jl")
 
-export hNODE
+export hNODE, hNODEInput
 
 end

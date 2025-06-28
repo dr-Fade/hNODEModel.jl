@@ -1,5 +1,10 @@
 using Lux, DiffEqFlux, ComponentArrays, Random, DifferentialEquations, LuxCUDA
 
+struct hNODEInput
+    encoder_input
+    control_input
+end
+
 struct hNODE <: Lux.AbstractLuxContainerLayer{(:encoder, :decoder, :control)}
     encoder::Lux.AbstractLuxLayer
     decoder::Lux.AbstractLuxLayer
@@ -21,21 +26,21 @@ struct hNODE <: Lux.AbstractLuxContainerLayer{(:encoder, :decoder, :control)}
 end
 
 Lux.initialstates(rng::AbstractRNG, m::hNODE) = (
-    rng = rng,
-    control = Lux.initialstates(rng, m.control),
-    encoder = Lux.initialstates(rng, m.encoder),
-    decoder = Lux.initialstates(rng, m.decoder),
-    Δt = 0.1f0,
-    T = 1f0,
-    ode = Lux.initialstates(rng, m.ode)
+    rng=rng,
+    control=Lux.initialstates(rng, m.control),
+    encoder=Lux.initialstates(rng, m.encoder),
+    decoder=Lux.initialstates(rng, m.decoder),
+    Δt=0.1f0,
+    T=1f0,
+    ode=Lux.initialstates(rng, m.ode)
 )
 
-function (m::hNODE)(xs::AbstractArray, ps, st::NamedTuple)
+function (m::hNODE)(xs::hNODEInput, ps, st::NamedTuple)
     u0s, st = encode(m, xs, ps, st)
     return m((xs, u0s), ps, st)
 end
 
-function (m::hNODE)((xs, u0s)::Tuple{<:AbstractArray, <:AbstractArray}, ps, st::NamedTuple)
+function (m::hNODE)((xs, u0s)::Tuple{<:hNODEInput,<:AbstractArray}, ps, st::NamedTuple)
     controls, st = control(m, xs, ps, st)
     (trajectories, un), st = integrate(m, (u0s, controls), ps, st)
     decoded, st = decode(m, trajectories, ps, st)
@@ -43,32 +48,32 @@ function (m::hNODE)((xs, u0s)::Tuple{<:AbstractArray, <:AbstractArray}, ps, st::
 end
 
 # first stage - embed into the latent space
-function encode(m::hNODE, xs::AbstractArray, ps, st)
-    u0s, st_encoder = m.encoder(xs, ps.encoder, st.encoder)
-    return u0s, (st..., encoder = st_encoder)
+function encode(m::hNODE, xs::hNODEInput, ps, st)
+    u0s, st_encoder = m.encoder(xs.encoder_input, ps.encoder, st.encoder)
+    return u0s, (st..., encoder=st_encoder)
 end
 
 # second stage - infer the control parameters
 function control(
     m::hNODE,
-    xs::AbstractArray,
+    xs::hNODEInput,
     ps,
     st::NamedTuple
 )
-    controls, st_control = m.control(xs, ps.control, st.control)
-    return controls, (st..., control = st_control)
+    controls, st_control = m.control(xs.control_input, ps.control, st.control)
+    return controls, (st..., control=st_control)
 end
 
 cat3(x...) = cat(x...; dims=3)
 # third stage - use the feature vector to get the control for ode and integrate it using the embedded sound as u0
 function integrate(
     m::hNODE,
-    (u0s, controls)::Tuple{<:AbstractArray, <:AbstractArray},
+    (u0s, controls)::Tuple{<:AbstractArray,<:AbstractArray},
     ps,
     st::NamedTuple
 )
     tspan = (0.0f0, st.T)
-    node = NeuralODE(m.ode, tspan, m.solver, dt = st.Δt, saveat=0f0:st.Δt:st.T, save_on=true, save_start=true, save_end=true, verbose=false)
+    node = NeuralODE(m.ode, tspan, m.solver, dt=st.Δt, saveat=0f0:st.Δt:st.T, save_on=true, save_start=true, save_end=true, verbose=false)
 
     trajectories = (
         begin
@@ -77,15 +82,15 @@ function integrate(
             reduce(hcat, solution)'
         end
         for (control, u0) ∈ zip(
-            eachslice(controls; dims = ndims(controls)),
-            eachslice(u0s; dims = ndims(u0s))
+            eachslice(controls; dims=ndims(controls)),
+            eachslice(u0s; dims=ndims(u0s))
         )
     )
 
     trajectories_as_array = reduce(cat3, trajectories)
 
-    prediction = trajectories_as_array[1:end-1,:,:]
-    new_u0s = trajectories_as_array[end,:,:]
+    prediction = trajectories_as_array[1:end-1, :, :]
+    new_u0s = trajectories_as_array[end, :, :]
 
     return (prediction, new_u0s), st
 end
